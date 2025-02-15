@@ -63,38 +63,66 @@ entry $
 	cmp rax, 0
 	jne ioctl_error
 
+	call print_level	
 
 main_loop:
 
 	mov rdi, STDIN
-	lea rsi,[input_char_buffer]
+	lea rsi,[input]
 	mov rdx,1
 	call read
 
-	cmp [input_char_buffer],'k'
+
+	cmp [input],'k'
 	je move_cursor_up
-	cmp [input_char_buffer],'j'
+	cmp [input],'j'
 	je move_cursor_down
-	cmp [input_char_buffer],'l'
+	cmp [input],'l'
 	je move_cursor_right
-	cmp [input_char_buffer],'h'
+	cmp [input],'h'
 	je move_cursor_left
 
-	cmp [input_char_buffer],'c'
+	cmp [input],'c'
 	je debug_show_cursor
 
-	cmp [input_char_buffer],'x'
+	cmp [input],'x'
 	je debug_hide_cursor
 
-	cmp [input_char_buffer],'d'
+	cmp [input],'d'
 	je move_player_right
+	
+	cmp [input],'a'
+	je move_player_left
+
+	cmp [input],'t'
+	je print_level
 
 
 
 	jmp main_loop
 
 
-delete_one_character:
+print_level:
+	;call move_cursor_home
+	mov rdx,platform_position_size
+	lea rsi,[platform_position]
+	call print
+	mov rdx,platform_size
+	lea rsi,[platform]
+	call print
+	mov rdx,player_position_size
+	lea rsi,[player_position]
+	call print
+	jmp main_loop
+
+move_cursor_home:
+	mov rdx,3
+	lea rsi,[home_cursor]
+	call print
+	ret
+
+
+delete_one_character_left:
 	call move_cursor_left
 	mov rdx,1
 	mov r12,' '
@@ -102,11 +130,29 @@ delete_one_character:
 	lea rsi,[rsp]
 	call print
 	pop r12
-	;call move_cursor_right
+	ret
+
+delete_one_character_right:
+	call move_cursor_left
+	mov rdx,1
+	mov r12,' '
+	push r12
+	lea rsi,[rsp]
+	call print
+	pop r12
 	ret
 
 move_player_right:
-	call delete_one_character	
+	call delete_one_character_right	
+	mov rdx,1
+	lea rsi, [character]
+	call print
+	jmp main_loop
+
+move_player_left:
+	call delete_one_character_left
+	call move_cursor_left
+	call move_cursor_left
 
 	mov rdx,1
 	lea rsi, [character]
@@ -293,7 +339,21 @@ show_cursor_size = $ - show_cursor
 hide_cursor: db ESC, "[?25l"
 hide_cursor_size = $ - hide_cursor
 
+platform db "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
+platform_size = $ - platform
+
+
+platform_position db ESC,"[9;0H"
+platform_position_size = $ - platform_position
+
+player_position db ESC,"[8;0H"
+player_position_size = $ - player_position
+
+home_cursor db ESC,"[H"
+
 input_char_buffer rb 1
+
+input rb 1
 
 termios rd 4;c_iflag input mode flags 4 bytes each
 						;c_oflag output mode flags
